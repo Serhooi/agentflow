@@ -19,6 +19,7 @@ export const useAuth = () => {
     try {
       setIsLoading(true);
 
+      // Create Supabase user account
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password
@@ -28,13 +29,15 @@ export const useAuth = () => {
         return { success: false, error: signUpError?.message || 'Sign up failed' };
       }
 
-      const user = data.user;
+      // Extract user ID (required for RLS insert!)
+      const userId = data.user.id;
 
+      // Insert corresponding row into profiles table
       const { error: insertError } = await supabase
         .from('profiles')
         .insert([
           {
-            id: user.id,
+            id: userId,          // ✅ Required for RLS!
             email,
             full_name,
             role,
