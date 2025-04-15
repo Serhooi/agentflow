@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 export const useAuth = () => {
@@ -9,40 +12,44 @@ export const useAuth = () => {
     full_name: string,
     role: string,
     company: string
-  ) => {
-    setIsLoading(true);
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password
+      });
 
-    if (error || !data.user) {
+      if (signUpError || !data.user) {
+        return { success: false, error: signUpError?.message || 'Sign up failed' };
+      }
+
+      const user = data.user;
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: user.id,
+            email,
+            full_name,
+            role,
+            company
+          }
+        ]);
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Unexpected error during sign up:', err);
+      return { success: false, error: 'Unexpected error during sign up' };
+    } finally {
       setIsLoading(false);
-      return { success: false, error: error?.message };
     }
-
-    const user = data.user;
-
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: user.id,
-          email,
-          full_name,
-          role,
-          company
-        }
-      ]);
-
-    setIsLoading(false);
-
-    if (insertError) {
-      return { success: false, error: insertError.message };
-    }
-
-    return { success: true };
   };
 
   return { signUp, isLoading };
