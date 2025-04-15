@@ -19,62 +19,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for active session on mount
     const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          // Get user data from database
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching user data:', error);
-            setUser(null);
-          } else {
-            setUser(userData as User);
-          }
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setUser(profile as User);
       }
+      setIsLoading(false);
     };
 
     checkSession();
 
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          // Get user data from database
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching user data:', error);
-            setUser(null);
-          } else {
-            setUser(userData as User);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setUser(profile as User);
+      } else {
+        setUser(null);
       }
-    );
+    });
 
-    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
@@ -83,26 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Call the login API route
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to sign in' };
-      }
-      
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { success: false, error: error.message };
       return { success: true };
-    } catch (error) {
-      console.error('Error signing in:', error);
-      return { success: false, error: 'An unexpected error occurred' };
+    } catch (err) {
+      return { success: false, error: 'Unexpected error during sign in' };
     } finally {
       setIsLoading(false);
     }
@@ -111,26 +68,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string, role: string, company?: string) => {
     try {
       setIsLoading(true);
-      
-      // Call the register API route
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, name, role, company }),
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        return { success: false, error: data.error || 'Failed to sign up' };
+
+      if (signUpError) {
+        return { success: false, error: signUpError.message };
       }
-      
+
+      const userId = data.user?.id;
+      if (!userId) {
+        return { success: false, error: 'Failed to get user ID after sign up' };
+      }
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            full_name: name,
+            email,
+            role,
+            company
+          }
+        ]);
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
       return { success: true };
-    } catch (error) {
-      console.error('Error signing up:', error);
-      return { success: false, error: 'An unexpected error occurred' };
+    } catch (err) {
+      console.error('Signup error:', err);
+      return { success: false, error: 'Unexpected error during sign up' };
     } finally {
       setIsLoading(false);
     }
@@ -139,15 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
-      
-      // Call the logout API route
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-      
+      await supabase.auth.signOut();
       setUser(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
+    } catch (err) {
+      console.error('Signout error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -162,10 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
