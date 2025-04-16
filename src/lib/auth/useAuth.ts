@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 export const useAuth = () => {
@@ -13,43 +11,41 @@ export const useAuth = () => {
     role: string,
     company: string
   ): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
-
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      setIsLoading(true);
+
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
-        password,
+        password
       });
 
-      if (signUpError || !data.user) {
-        return { success: false, error: signUpError?.message || 'Sign up failed' };
+      if (signUpError) {
+        return { success: false, error: signUpError.message };
       }
 
-      // Подпишемся на auth state
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: session.user.id,
-                email,
-                full_name,
-                role,
-                company,
-              },
-            ]);
+      // 🎯 Делаем отдельный вызов, чтобы получить текущего пользователя
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        return { success: false, error: userError?.message || 'User not found after sign up' };
+      }
 
-          if (insertError) {
-            console.error('Insert profile error:', insertError.message);
+      const user = userData.user;
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: user.id, // 🎯 вот оно!
+            email,
+            full_name,
+            role,
+            company
           }
+        ]);
 
-          // Обязательно отписка
-          subscription.unsubscribe();
-        }
-      });
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
 
       return { success: true };
     } catch (err) {
