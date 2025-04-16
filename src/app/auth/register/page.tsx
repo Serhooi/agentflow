@@ -21,7 +21,7 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,12 +52,43 @@ export default function RegisterPage() {
     <form onSubmit={handleSubmit}>
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <input name="full_name" value={formData.full_name} onChange={handleChange} placeholder="Full Name" required />
-      <input name="email" value={formData.email} onChange={handleChange} placeholder="Email" required />
-      <input name="password" value={formData.password} onChange={handleChange} type="password" placeholder="Password" required />
-      <input name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} type="password" placeholder="Confirm Password" required />
-      <input name="company" value={formData.company} onChange={handleChange} placeholder="Company" />
-      
+      <input
+        name="full_name"
+        value={formData.full_name}
+        onChange={handleChange}
+        placeholder="Full Name"
+        required
+      />
+      <input
+        name="email"
+        type="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="Email"
+        required
+      />
+      <input
+        name="password"
+        type="password"
+        value={formData.password}
+        onChange={handleChange}
+        placeholder="Password"
+        required
+      />
+      <input
+        name="confirmPassword"
+        type="password"
+        value={formData.confirmPassword}
+        onChange={handleChange}
+        placeholder="Confirm Password"
+        required
+      />
+      <input
+        name="company"
+        value={formData.company}
+        onChange={handleChange}
+        placeholder="Company"
+      />
       <select name="role" value={formData.role} onChange={handleChange}>
         <option value="agent">Mortgage Agent</option>
         <option value="broker">Mortgage Broker</option>
