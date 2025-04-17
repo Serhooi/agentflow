@@ -1,60 +1,58 @@
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+'use client';
 
-export const useAuth = () => {
+import { useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+export function useAuth() {
+  const supabase = createClientComponentClient();
   const [isLoading, setIsLoading] = useState(false);
 
   const signUp = async (
     email: string,
     password: string,
-    full_name: string,
+    fullName: string,
     role: string,
     company: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      setIsLoading(true);
+  ) => {
+    setIsLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password
-      });
-
-      if (signUpError) {
-        return { success: false, error: signUpError.message };
-      }
-
-      // 🎯 Делаем отдельный вызов, чтобы получить текущего пользователя
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData?.user) {
-        return { success: false, error: userError?.message || 'User not found after sign up' };
-      }
-
-      const user = userData.user;
-
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: user.id, // 🎯 вот оно!
-            email,
-            full_name,
-            role,
-            company
-          }
-        ]);
-
-      if (insertError) {
-        return { success: false, error: insertError.message };
-      }
-
-      return { success: true };
-    } catch (err) {
-      console.error('Unexpected error during sign up:', err);
-      return { success: false, error: 'Unexpected error during sign up' };
-    } finally {
+    if (error) {
       setIsLoading(false);
+      return { success: false, error: error.message };
     }
+
+    // Ждём пока появится сессия
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      setIsLoading(false);
+      return { success: false, error: 'Auth session missing!' };
+    }
+
+    const user = session.user;
+
+    const { error: insertError } = await supabase.from('profiles').insert({
+      id: user.id,
+      email,
+      full_name: fullName,
+      role,
+      company,
+    });
+
+    setIsLoading(false);
+
+    if (insertError) {
+      return { success: false, error: insertError.message };
+    }
+
+    return { success: true };
   };
 
   return { signUp, isLoading };
-};
+}
