@@ -65,6 +65,26 @@ export async function POST(request: Request) {
       );
     }
     
+    // Also insert into profiles table to ensure profile data is created
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user?.id,
+        user_id: authData.user?.id,
+        email,
+        full_name: name,
+        role,
+        company,
+        avatar_url: null,
+        updated_at: new Date().toISOString(),
+      });
+    
+    if (profileError) {
+      console.error('Error creating user profile:', profileError);
+      // Don't return error here, as the user was created successfully
+      // Just log the error for debugging
+    }
+    
     // If the user is a broker, create a team
     if (role === 'broker') {
       const teamName = company || `${name}'s Team`;

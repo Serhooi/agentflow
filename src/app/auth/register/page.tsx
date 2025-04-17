@@ -2,143 +2,191 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/useAuth';
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { signUp, isLoading } = useAuth();
-
   const [formData, setFormData] = useState({
-    full_name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    name: '',
     role: 'agent',
     company: ''
   });
-
   const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    // Basic validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
-    const result = await signUp(
-      formData.email,
-      formData.password,
-      formData.full_name,
-      formData.role,
-      formData.company
-    );
-
-    if (result.success) {
-      router.push('/dashboard');
-    } else {
-      setError(result.error || 'Failed to register user');
+    try {
+      const result = await signUp(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.role,
+        formData.company
+      );
+      
+      if (result.success) {
+        // Redirect to dashboard
+        router.push('/dashboard');
+      } else {
+        setError(result.error || 'Failed to create account. Please try again.');
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9fc] px-4 py-8">
-      <h1 className="text-3xl font-bold text-blue-700 mb-2">AgentFlow</h1>
-      <h2 className="text-xl font-semibold mb-1">Create your account</h2>
-      <p className="mb-4 text-gray-600">Already have an account? <a href="/auth/login" className="text-blue-600 underline">Sign in</a></p>
-
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-md space-y-4">
-        {error && <div className="bg-red-100 text-red-700 p-3 rounded text-sm">{error}</div>}
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Full Name</label>
-          <input
-            name="full_name"
-            value={formData.full_name}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <Link href="/" className="text-3xl font-bold text-blue-600">
+            AgentFlow
+          </Link>
+          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Sign in
+            </Link>
+          </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Email address</label>
-          <input
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
+        <Card className="shadow-lg rounded-lg overflow-hidden">
+          <CardContent className="pt-6">
+            {error && (
+              <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <Input
+                  id="name"
+                  name="name"
+                  label="Full Name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="block w-full"
+                />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Password</label>
-          <input
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
+                <Input
+                  id="email"
+                  name="email"
+                  label="Email address"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="block w-full"
+                />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Confirm Password</label>
-          <input
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
+                <Input
+                  id="password"
+                  name="password"
+                  label="Password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="block w-full"
+                />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">I am a</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full border px-3 py-2 rounded"
-          >
-            <option value="agent">Mortgage Agent</option>
-            <option value="broker">Mortgage Broker</option>
-          </select>
-        </div>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="block w-full"
+                />
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Company Name</label>
-          <input
-            name="company"
-            value={formData.company}
-            onChange={handleChange}
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
+                <Select
+                  id="role"
+                  name="role"
+                  label="I am a"
+                  required
+                  value={formData.role}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'agent', label: 'Mortgage Agent' },
+                    { value: 'broker', label: 'Mortgage Broker' }
+                  ]}
+                  className="block w-full"
+                />
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded"
-        >
-          {isLoading ? 'Creating...' : 'Create Account'}
-        </button>
+                <Input
+                  id="company"
+                  name="company"
+                  label="Company Name"
+                  type="text"
+                  autoComplete="organization"
+                  value={formData.company}
+                  onChange={handleChange}
+                  className="block w-full"
+                />
+              </div>
 
-        <p className="text-xs text-center text-gray-500 mt-4">
-          By creating an account, you agree to our <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>
-        </p>
-      </form>
+              <Button 
+                type="submit" 
+                fullWidth={true} 
+                isLoading={isLoading}
+                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Create Account
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t p-6">
+            <div className="text-sm text-gray-500">
+              By creating an account, you agree to our{' '}
+              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                Privacy Policy
+              </a>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

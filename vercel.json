@@ -1,0 +1,29 @@
+// This file is used to configure Vercel deployment settings
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "github": {
+    "silent": false
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_REAL_URL": "@next_public_supabase_real_url",
+    "NEXT_PUBLIC_SUPABASE_REAL_ANON_KEY": "@next_public_supabase_real_anon_key",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@next_public_stripe_publishable_key",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key"
+  }
+}
